@@ -39,10 +39,27 @@ export default function AnalyzePage() {
       ])
       sessionStorage.setItem('flavor_result', JSON.stringify({ analysis, canvas, roadmap, idea: updated.idea }))
       router.push('/result')
-    } catch {
-      alert('분석 중 오류가 발생했습니다. API 키를 확인해주세요.')
+    } catch (err) {
+      const results = await Promise.allSettled([
+        fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(async r => {
+          if (!r.ok) throw new Error((await r.json()).error)
+          return r.json()
+        }),
+        fetch('/api/canvas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(async r => {
+          if (!r.ok) throw new Error((await r.json()).error)
+          return r.json()
+        }),
+        fetch('/api/roadmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(async r => {
+          if (!r.ok) throw new Error((await r.json()).error)
+          return r.json()
+        }),
+      ])
+  
+      const failed = results.find(r => r.status === 'rejected')
+      if (failed && failed.status === 'rejected') {
+        alert(`분석 실패: ${failed.reason.message}`)
+      }
       setLoading(false)
-    }
   }
 
   if (loading) {
