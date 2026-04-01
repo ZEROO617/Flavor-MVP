@@ -3,6 +3,7 @@ export type AnalysisResult = {
   summary: string
   redFlags: string[]
   strengths: string[]
+  competitors: { name: string; description: string }[]
   marketDemand: string
   competitionLevel: string
   pivotSuggestions: string[]
