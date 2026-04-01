@@ -18,6 +18,36 @@ function safeString(val: unknown, fallback = '-'): string {
   return fallback
 }
 
+const MARKET_LABELS: Record<string, { en: string; ko: string; desc: string }> = {
+  tam: {
+    en: 'TAM',
+    ko: '전체 시장 규모',
+    desc: 'Total Addressable Market — 해당 시장의 전체 잠재 규모',
+  },
+  sam: {
+    en: 'SAM',
+    ko: '서비스 가능 시장',
+    desc: 'Serviceable Available Market — 실제 서비스 제공이 가능한 시장 범위',
+  },
+  som: {
+    en: 'SOM',
+    ko: '확보 가능 시장',
+    desc: 'Serviceable Obtainable Market — 초기 1년 내 실제 확보 가능한 시장',
+  },
+}
+
+const CANVAS_LABELS: Record<string, string> = {
+  'Problem': 'Problem (문제)',
+  'Customer Segments': 'Customer Segments (고객 세그먼트)',
+  'Unique Value Proposition': 'Unique Value Proposition (가치 제안)',
+  'Solution': 'Solution (솔루션)',
+  'Channels': 'Channels (채널)',
+  'Revenue Streams': 'Revenue Streams (수익 구조)',
+  'Cost Structure': 'Cost Structure (비용 구조)',
+  'Key Metrics': 'Key Metrics (핵심 지표)',
+  'Unfair Advantage': 'Unfair Advantage (경쟁 우위)',
+}
+
 export default function ResultPage() {
   const router = useRouter()
   const [data, setData] = useState<Data | null>(null)
@@ -53,14 +83,18 @@ export default function ResultPage() {
         ))}
       </div>
 
+      {/* ===== 탭 0: 반증 분석 ===== */}
       {tab === 0 && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-3 gap-6">
+            {/* 점수 */}
             <div className="bg-surface-card rounded-2xl p-6 flex flex-col items-center border border-gray-800">
               <h3 className="text-sm text-gray-400 mb-4">실현 가능성 점수</h3>
               <ScoreGauge score={a.score ?? 0} />
               <p className="mt-4 text-sm text-gray-300 text-center">{safeString(a.summary)}</p>
             </div>
+
+            {/* Red Flags + Strengths */}
             <div className="space-y-4">
               <div className="bg-surface-card rounded-2xl p-6 border border-gray-800">
                 <h3 className="text-sm text-red-400 font-semibold mb-3">🚩 Red Flags</h3>
@@ -83,6 +117,8 @@ export default function ResultPage() {
                 </ul>
               </div>
             </div>
+
+            {/* 시장 지표 + 피봇 */}
             <div className="space-y-4">
               <div className="bg-surface-card rounded-2xl p-6 border border-gray-800">
                 <h3 className="text-sm text-gray-400 font-semibold mb-3">📊 시장 지표</h3>
@@ -95,11 +131,30 @@ export default function ResultPage() {
                     <span className="text-gray-500">경쟁 강도</span>
                     <Tag variant={a.competitionLevel === 'low' ? 'green' : a.competitionLevel === 'medium' ? 'amber' : 'red'}>{safeString(a.competitionLevel)}</Tag>
                   </div>
-                  <div className="flex justify-between"><span className="text-gray-500">TAM</span><span className="text-gray-300 text-right">{safeString(a.tam)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">SAM</span><span className="text-gray-300 text-right">{safeString(a.sam)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">SOM</span><span className="text-gray-300 text-right">{safeString(a.som)}</span></div>
                 </div>
               </div>
+
+              {/* TAM / SAM / SOM 별도 카드 */}
+              <div className="bg-surface-card rounded-2xl p-6 border border-gray-800">
+                <h3 className="text-sm text-gray-400 font-semibold mb-4">📈 시장 규모 분석 (Bottom-Up)</h3>
+                <div className="space-y-4">
+                  {(['tam', 'sam', 'som'] as const).map((key) => {
+                    const label = MARKET_LABELS[key]
+                    const value = safeString((a as Record<string, unknown>)[key])
+                    return (
+                      <div key={key} className="border-l-2 border-brand pl-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-brand">{label.en}</span>
+                          <span className="text-xs text-gray-500">{label.ko}</span>
+                        </div>
+                        <p className="text-sm text-gray-300 leading-relaxed">{value}</p>
+                        <p className="text-xs text-gray-600 mt-1">{label.desc}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="bg-surface-card rounded-2xl p-6 border border-gray-800">
                 <h3 className="text-sm text-blue-400 font-semibold mb-3">🔄 피봇 제안</h3>
                 <ul className="space-y-2">
@@ -113,6 +168,7 @@ export default function ResultPage() {
             </div>
           </div>
 
+          {/* 경쟁사 섹션 */}
           {Array.isArray(a.competitors) && a.competitors.length > 0 && (
             <div className="bg-surface-card rounded-2xl p-6 border border-gray-800">
               <h3 className="text-sm text-amber-400 font-semibold mb-4">⚔️ 주요 경쟁 서비스</h3>
@@ -129,6 +185,7 @@ export default function ResultPage() {
         </div>
       )}
 
+      {/* ===== 탭 1: Lean Canvas ===== */}
       {tab === 1 && c && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
@@ -143,7 +200,7 @@ export default function ResultPage() {
             { title: 'Unfair Advantage', items: [safeString(c.unfairAdvantage)], span: 'col-span-2 md:col-span-4' },
           ].map(({ title, items, span }) => (
             <div key={title} className={`bg-surface-card rounded-xl p-4 border border-gray-800 ${span}`}>
-              <h4 className="text-xs text-brand font-semibold mb-2 uppercase">{title}</h4>
+              <h4 className="text-xs text-brand font-semibold mb-2 uppercase">{CANVAS_LABELS[title] || title}</h4>
               <ul className="space-y-1">
                 {items.map((item, i) => (
                   <li key={i} className="text-sm text-gray-300">• {item}</li>
@@ -160,11 +217,12 @@ export default function ResultPage() {
         </div>
       )}
 
+      {/* ===== 탭 2: 8주 로드맵 ===== */}
       {tab === 2 && r && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-3 gap-4 mb-6">
             <div className="bg-surface-card rounded-xl p-4 border border-gray-800">
-              <h4 className="text-xs text-gray-500 mb-1">Tech Stack</h4>
+              <h4 className="text-xs text-gray-500 mb-1">기술 스택</h4>
               <div className="flex flex-wrap gap-1">{safeArray(r.techStack).map((t) => <Tag key={t} variant="blue">{t}</Tag>)}</div>
             </div>
             <div className="bg-surface-card rounded-xl p-4 border border-gray-800">
