@@ -9,11 +9,25 @@ const QUESTIONS = [
   { id: 'existing', label: '현재 고객들은 이 문제를 어떻게 해결하나요?', placeholder: '예: 엑셀로 직접 계산하거나, 세무사에게 월 10만 원 지불' },
 ]
 
+async function safeFetch(url: string, idea: string) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idea }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(body.error || `${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
 export default function AnalyzePage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [input, setInput] = useState('')
 
   const q = QUESTIONS[step]
@@ -29,37 +43,22 @@ export default function AnalyzePage() {
     }
 
     setLoading(true)
+    setError('')
     const idea = `서비스: ${updated.idea}\n문제: ${updated.problem}\n고객: ${updated.customer}\n현재 해결법: ${updated.existing}`
 
     try {
       const [analysis, canvas, roadmap] = await Promise.all([
-        fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(r => r.json()),
-        fetch('/api/canvas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(r => r.json()),
-        fetch('/api/roadmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(r => r.json()),
+        safeFetch('/api/analyze', idea),
+        safeFetch('/api/canvas', idea),
+        safeFetch('/api/roadmap', idea),
       ])
       sessionStorage.setItem('flavor_result', JSON.stringify({ analysis, canvas, roadmap, idea: updated.idea }))
       router.push('/result')
-    } catch (err) {
-      const results = await Promise.allSettled([
-        fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(async r => {
-          if (!r.ok) throw new Error((await r.json()).error)
-          return r.json()
-        }),
-        fetch('/api/canvas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(async r => {
-          if (!r.ok) throw new Error((await r.json()).error)
-          return r.json()
-        }),
-        fetch('/api/roadmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idea }) }).then(async r => {
-          if (!r.ok) throw new Error((await r.json()).error)
-          return r.json()
-        }),
-      ])
-  
-      const failed = results.find(r => r.status === 'rejected')
-      if (failed && failed.status === 'rejected') {
-        alert(`분석 실패: ${failed.reason.message}`)
-      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setError(msg)
       setLoading(false)
+    }
   }
 
   if (loading) {
@@ -84,20 +83,40 @@ export default function AnalyzePage() {
         <h2 className="text-2xl font-bold">{q.label}</h2>
         <textarea
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           placeholder={q.placeholder}
           rows={4}
           className="w-full bg-surface-card border border-gray-700 rounded-xl p-4 text-white placeholder-gray-600 focus:outline-none focus:border-brand resize-none"
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && input.trim()) { e.preventDefault(); handleNext() }}}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+              e.preventDefault()
+              handleNext()
+            }
+          }}
         />
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-300">
+            <p className="font-semibold mb-1">❌ 분석 실패</p>
+            <p>{error}</p>
+          </div>
+        )}
         <div className="flex justify-between">
-          <button onClick={() => { setStep(Math.max(0, step - 1)); setInput(answers[QUESTIONS[Math.max(0, step - 1)]?.id] || '') }}
+          <button
+            onClick={() => {
+              const prev = Math.max(0, step - 1)
+              setStep(prev)
+              setInput(answers[QUESTIONS[prev]?.id] || '')
+            }}
             disabled={step === 0}
-            className="px-6 py-2 rounded-lg text-gray-400 hover:text-white disabled:opacity-30">
+            className="px-6 py-2 rounded-lg text-gray-400 hover:text-white disabled:opacity-30"
+          >
             ← 이전
           </button>
-          <button onClick={handleNext} disabled={!input.trim()}
-            className="px-8 py-2 bg-brand hover:bg-brand-dark rounded-lg font-semibold disabled:opacity-30 transition-colors">
+          <button
+            onClick={handleNext}
+            disabled={!input.trim()}
+            className="px-8 py-2 bg-brand hover:bg-brand-dark rounded-lg font-semibold disabled:opacity-30 transition-colors"
+          >
             {step === QUESTIONS.length - 1 ? 'AI 분석 시작 🚀' : '다음 →'}
           </button>
         </div>
