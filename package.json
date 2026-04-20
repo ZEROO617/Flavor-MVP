@@ -1,6 +1,6 @@
 {
-  "name": "flavor-mvp",
-  "version": "0.1.0",
+  "name": "sparkup",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
