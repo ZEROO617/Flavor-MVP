@@ -5,7 +5,7 @@ export default function Home() {
     <main className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="max-w-2xl text-center space-y-6">
         <h1 className="text-5xl font-bold bg-gradient-to-r from-brand-light to-purple-400 bg-clip-text text-transparent">
-          Flavor
+          SPARKUP
         </h1>
         <p className="text-xl text-gray-400">
           아이디어를 넘어 실행 가능한 비즈니스로
