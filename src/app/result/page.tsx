@@ -57,7 +57,7 @@ export default function ResultPage() {
   const [tab, setTab] = useState(0)
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('flavor_result')
+    const raw = sessionStorage.getItem('sparkup_result')
     if (!raw) { router.push('/analyze'); return }
     try {
       setData(JSON.parse(raw))

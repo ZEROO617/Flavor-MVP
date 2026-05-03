@@ -83,7 +83,7 @@ export default function AnalyzePage() {
         safeFetch('/api/canvas', idea),
         safeFetch('/api/roadmap', idea),
       ])
-      sessionStorage.setItem('flavor_result', JSON.stringify({ analysis, canvas, roadmap, idea: updated.idea }))
+      sessionStorage.setItem('sparkup_result', JSON.stringify({ analysis, canvas, roadmap, idea: updated.idea }))
       router.push('/result')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
