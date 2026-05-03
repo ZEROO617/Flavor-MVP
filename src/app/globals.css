@@ -2,4 +2,5 @@
 @tailwind components;
 @tailwind utilities;
 
-body { @apply bg-surface text-gray-100 antialiased; }
+body { @apply bg-surface text-primary antialiased; }
+* { @apply border-surface-border; }

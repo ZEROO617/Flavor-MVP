@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const QUESTIONS = [
@@ -22,20 +22,51 @@ async function safeFetch(url: string, idea: string) {
   return res.json()
 }
 
+async function validateInput(input: string, step: number): Promise<{ valid: boolean; reason?: string }> {
+  try {
+    const res = await fetch('/api/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input, step }),
+    })
+    return res.json()
+  } catch {
+    return { valid: true }
+  }
+}
+
 export default function AnalyzePage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [validating, setValidating] = useState(false)
   const [error, setError] = useState('')
+  const [validationError, setValidationError] = useState('')
   const [input, setInput] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const q = QUESTIONS[step]
 
   async function handleNext() {
+    if (!input.trim()) return
+
+    setValidationError('')
+    setValidating(true)
+
+    const result = await validateInput(input.trim(), step)
+    setValidating(false)
+
+    if (!result.valid) {
+      setValidationError(result.reason ?? '입력 내용을 구체적으로 작성해 주세요.')
+      textareaRef.current?.focus()
+      return
+    }
+
     const updated = { ...answers, [q.id]: input }
     setAnswers(updated)
     setInput('')
+    setValidationError('')
 
     if (step < QUESTIONS.length - 1) {
       setStep(step + 1)
@@ -63,62 +94,105 @@ export default function AnalyzePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-brand border-t-transparent rounded-full" />
-        <p className="mt-4 text-gray-400">AI가 반증 분석 중입니다...</p>
-        <p className="text-sm text-gray-600 mt-2">약 15-30초 소요</p>
+      <main className="min-h-screen flex flex-col items-center justify-center bg-surface">
+        <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
+        <p className="mt-6 text-primary-muted">AI가 반증 분석 중입니다...</p>
+        <p className="text-sm text-primary-subtle mt-2">약 15-30초 소요</p>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="min-h-screen bg-surface flex items-center justify-center px-4">
       <div className="max-w-xl w-full space-y-6">
-        <div className="flex gap-1">
+        {/* 헤더 */}
+        <div className="text-center mb-8">
+          <span className="text-sm font-bold tracking-widest text-primary-subtle uppercase">SPARKUP</span>
+          <p className="text-xs text-primary-subtle mt-1">Step {step + 1} / {QUESTIONS.length}</p>
+        </div>
+
+        {/* 프로그레스 바 */}
+        <div className="flex gap-1.5">
           {QUESTIONS.map((_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded ${i <= step ? 'bg-brand' : 'bg-surface-hover'}`} />
+            <div
+              key={i}
+              className={`h-0.5 flex-1 rounded-full transition-colors duration-300 ${
+                i <= step ? 'bg-primary' : 'bg-surface-border'
+              }`}
+            />
           ))}
         </div>
-        <p className="text-sm text-gray-500">Step {step + 1} / {QUESTIONS.length}</p>
-        <h2 className="text-2xl font-bold">{q.label}</h2>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={q.placeholder}
-          rows={4}
-          className="w-full bg-surface-card border border-gray-700 rounded-xl p-4 text-white placeholder-gray-600 focus:outline-none focus:border-brand resize-none"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
-              e.preventDefault()
-              handleNext()
-            }
-          }}
-        />
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-300">
-            <p className="font-semibold mb-1">❌ 분석 실패</p>
-            <p>{error}</p>
+
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-8 shadow-sm space-y-6">
+          <div>
+            <p className="text-xs text-primary-subtle font-semibold uppercase tracking-widest mb-2">STEP 0{step + 1}</p>
+            <h2 className="text-2xl font-bold text-primary">{q.label}</h2>
           </div>
-        )}
-        <div className="flex justify-between">
-          <button
-            onClick={() => {
-              const prev = Math.max(0, step - 1)
-              setStep(prev)
-              setInput(answers[QUESTIONS[prev]?.id] || '')
-            }}
-            disabled={step === 0}
-            className="px-6 py-2 rounded-lg text-gray-400 hover:text-white disabled:opacity-30"
-          >
-            ← 이전
-          </button>
-          <button
-            onClick={handleNext}
-            disabled={!input.trim()}
-            className="px-8 py-2 bg-brand hover:bg-brand-dark rounded-lg font-semibold disabled:opacity-30 transition-colors"
-          >
-            {step === QUESTIONS.length - 1 ? 'AI 분석 시작 🚀' : '다음 →'}
-          </button>
+
+          <div>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value)
+                if (validationError) setValidationError('')
+              }}
+              placeholder={q.placeholder}
+              rows={4}
+              className={`w-full bg-surface-elevated border rounded-xl p-4 text-primary placeholder-primary-subtle focus:outline-none focus:ring-1 resize-none transition-colors duration-200 text-sm ${
+                validationError
+                  ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
+                  : 'border-surface-border focus:border-primary/40 focus:ring-primary/10'
+              }`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && input.trim()) {
+                  e.preventDefault()
+                  handleNext()
+                }
+              }}
+            />
+            {validationError && (
+              <p className="mt-2 text-sm text-red-500 flex items-center gap-1.5">
+                <span>⚠</span>
+                <span>{validationError} 다시 입력해 주세요.</span>
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">
+              <p className="font-semibold mb-1">분석 실패</p>
+              <p>{error}</p>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center pt-2">
+            <button
+              onClick={() => {
+                if (step === 0) {
+                  router.push('/')
+                  return
+                }
+                const prev = step - 1
+                setStep(prev)
+                setInput(answers[QUESTIONS[prev]?.id] || '')
+                setValidationError('')
+              }}
+              className="px-4 py-2 rounded-lg text-primary-muted hover:text-primary transition-colors text-sm"
+            >
+              ← 이전
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!input.trim() || validating}
+              className="px-8 py-2.5 bg-primary hover:bg-brand-light rounded-xl font-semibold text-white disabled:opacity-40 transition-colors flex items-center gap-2 text-sm"
+            >
+              {validating && (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {step === QUESTIONS.length - 1 ? 'AI 분석 시작 →' : '다음 →'}
+            </button>
+          </div>
         </div>
       </div>
     </main>

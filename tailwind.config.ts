@@ -5,29 +5,35 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: '#111111',
-          light: '#333333',
-          muted: '#666666',
-        },
         surface: {
-          DEFAULT: '#ffffff',
-          secondary: '#f7f7f8',
-          border: '#e5e5e5',
-          hover: '#f0f0f0',
+          DEFAULT: '#EAE6DD',
+          card: '#FFFFFF',
+          elevated: '#F4F1EC',
+          hover: '#E2DDD4',
+          border: '#D4CFC5',
+        },
+        primary: {
+          DEFAULT: '#1A1A18',
+          muted: '#5A5A54',
+          subtle: '#8A8A82',
         },
         accent: {
-          DEFAULT: '#111111',
-          soft: '#f5f5f5',
+          DEFAULT: '#1A1A18',
+          bright: '#333330',
+          soft: '#1A1A1812',
+        },
+        brand: {
+          DEFAULT: '#1A1A18',
+          dark: '#000000',
+          light: '#333330',
         },
       },
       fontFamily: {
         sans: [
-          'Pretendard',
+          'Inter',
           '-apple-system',
           'BlinkMacSystemFont',
           'system-ui',
-          'Helvetica Neue',
           'sans-serif',
         ],
       },
